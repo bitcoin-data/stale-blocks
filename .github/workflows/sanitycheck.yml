@@ -1,0 +1,21 @@
+
+name: stale-blocks.csv sanity-check
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  sanity-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: sanity check
+        run: python ci/sanity-check.py
+
+
