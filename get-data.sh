@@ -1,16 +1,18 @@
-#!/bin/bash
-
+#!/bin/sh
+#
 # A script to extract stale blocks (height, hash, header) from a
 # Bitcoin Core node. Output is in CSV format.
-# This assumes .cookie-file authentication to the Bitcoin Core node.
 
-TIPS=$(bitcoin-cli getchaintips)
-STALE_TIP_PER_LINE=$(echo $TIPS | jq -c '.[] | select( .status == "valid-fork" or .status == "headers-only" or .status == "valid-headers" )')
+RPC_HOST=""
+RPC_PORT=""
+RPC_USER=""
+RPC_PASS=""
+RPC_INFO="--rpcuser=$RPC_USER --rpcconnect=$RPC_HOST --rpcpassword=$RPC_PASS --rpcport=$RPC_PORT"
 
-for tip in $STALE_TIP_PER_LINE
-do
-	height=$(echo $tip | jq .height)
-	hash=$(echo $tip | jq -r .hash)
-	header=$(bitcoin-cli getblockheader $hash false)
-	echo "$height,$hash,$header"
-done
+bitcoin-cli $RPC_INFO getchaintips \
+	 | jq -rc '.[] | select (.status != "active" and .status != "invalid")
+                       | ( (.height | tostring) + " " + .hash )' \
+	 | while read height bhash;
+		do
+			echo "$height,$bhash,$(bitcoin-cli $RPC_INFO getblockheader $bhash false)"
+		done
