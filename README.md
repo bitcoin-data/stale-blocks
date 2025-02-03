@@ -1,9 +1,8 @@
 # stale-blocks
 
-Dataset of stale blocks observed on the Bitcoin network.
+Dataset of stale headers and blocks observed on the Bitcoin network.
 
-
-## Contributing stale-block data
+## Contributing stale-block headers
 
 Ideally, stale-block hashes should be provided along with the corresponding
 block-header. A hash without a block header could easily be fake.
@@ -28,3 +27,15 @@ Create a commit and open a PR. Keep in mind that this allows to figure out how
 long you've been running a Bitcoin Core node. If that's a problem, you can also
 submit your data to the project's maintainer to contribute anonymously.
 
+## Contributing full stale blocks
+
+Where possible, it's favorable to have the full blocks belonging to the stale
+block headers. Similar to the get-data.sh script, the `get-full-stale-blocks.sh`
+script can be used to store the full blocks as binary blobs in the `blocks`
+direcory.
+
+These can be imported back to a Bitcoin Core node with, for example:
+
+```
+cat blocks/813210-000000000000000000021c9f203786c0adcd7ae9a68a25d5e430d2a3dba613d5.bin | xxd -p | tr -d $'\n' | bitcoin-cli -stdin submitblock
+```
