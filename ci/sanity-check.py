@@ -25,24 +25,22 @@ with open("stale-blocks.csv", "r") as f:
     next(reader, None)  # Skip header row
     for row in reader:
         print("checking row:", row)
-        assert (len(row) == EXPECTED_COLUMNS)
+        assert len(row) == EXPECTED_COLUMNS
 
         height = int(row[0])
-        assert (height > 0)
+        assert height
 
         if last_height is not None:
-            assert (last_height >= height)
+            assert last_height >= height
+        last_height = height
 
-        header_hash = row[1]
-        header = row[2]
+        header_hash, header = row[1], row[2]
 
-        if header != "":
+        if header:
             calculated_header_hash = bytes(reversed(dsha256(bytes.fromhex(header)))).hex()
-            assert (header_hash == calculated_header_hash)
+            assert header_hash == calculated_header_hash
 
-        if header_hash not in hash_count:
-            hash_count[header_hash] = 0
-        hash_count[header_hash] += 1
+        hash_count[header_hash] = hash_count.get(header_hash, 0) + 1
 
 hash_appeared_multiple_times = False
 for e in hash_count.items():
