@@ -18,11 +18,12 @@ bitcoin-cli $RPC_INFO getchaintips \
 	 | while read height bhash;
 		do
 			echo "trying to get block $bhash ($height).."
+			FILENAME="$height-$bhash.bin"
+			if [ -s "$BLOCK_DIR/$FILENAME" ]; then continue; fi
 			block=$(bitcoin-cli $RPC_INFO getblock $bhash 0)
 			GETBLOCK_ERROR=$?
 			if [ $GETBLOCK_ERROR -eq 0 ];
 			then
-				FILENAME="$height-$bhash.bin"
 				echo $block | xxd -r -p > "$BLOCK_DIR/$FILENAME"
 				echo "saved $BLOCK_DIR/$FILENAME"
 			fi
