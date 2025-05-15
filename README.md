@@ -17,9 +17,7 @@ To automatically add your data to [`stale-blocks.csv`](./stale-blocks.csv) you
 can use the following:
 
 ```
-sh get-data.sh > my-stale-blocks.csv
-cat stale-blocks.csv my-stale-blocks.csv | sort --reverse --unique --output stale-blocks.csv
-rm my-stale-blocks.csv
+python3 ./get-data.py
 git diff stale-blocks.csv
 ```
 
@@ -30,9 +28,8 @@ submit your data to the project's maintainer to contribute anonymously.
 ## Contributing full stale blocks
 
 Where possible, it's favorable to have the full blocks belonging to the stale
-block headers. Similar to the get-data.sh script, the `get-full-stale-blocks.sh`
-script can be used to store the full blocks as binary blobs in the `blocks`
-direcory.
+block headers. You can use the `--get-full-blocks` argument to get-data.py
+to store the full blocks as binary blobs in the `blocks` direcory.
 
 These can be imported back to a Bitcoin Core node with, for example:
 
