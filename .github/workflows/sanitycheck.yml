@@ -1,4 +1,3 @@
-
 name: stale-blocks.csv sanity-check
 
 on:
@@ -13,11 +12,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: sanity check
         run: python ci/sanity-check.py
 
-      - name: ckeck that additions to stale-blocks.csv do not contain a main-chain block
-        run: git diff ${{ github.event.before }} ${{ github.event.after }} --no-ext-diff --unified=0 -a --no-prefix --output-indicator-new=% stale-blocks.csv | sed -n "s/^%\(.*\)$/\1/p" | python ci/no-main-chain-hash.py
+      - name: check that additions to stale-blocks.csv do not contain a main-chain block
+        run: |
+          echo "base SHA: ${{ github.event.pull_request.base.sha }}"
+          echo "head SHA: ${{ github.event.pull_request.head.sha }}"
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+
+          git diff ${{ github.event.before }} ${{ github.event.after }} --no-ext-diff --unified=0 -a --no-prefix --output-indicator-new=% stale-blocks.csv | \
+            sed -n "s/^%\(.*\)$/\1/p" | \
+            python ci/no-main-chain-hash.py
