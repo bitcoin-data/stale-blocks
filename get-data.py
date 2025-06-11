@@ -4,10 +4,13 @@
 # Bitcoin Core node. Output is in CSV format.
 
 import argparse
+import csv
 import json
 import os.path
 import subprocess
 import sys
+
+CSV_HEADER = ["height", "hash", "header"]
 
 class Cli:
     def __init__(self, args):
@@ -32,13 +35,23 @@ class Cli:
 def main(args):
     cli = Cli(args).cli
 
+    existing = {}
     if os.path.exists(args.header_csv):
         # throw an exception if open/read fails
-        existing = list(open(args.header_csv, "r").readlines())
+        reader = csv.reader(open(args.header_csv, "r", newline=''))
+        next(reader, None)  # skip the headers
+        for height, bhash, header in reader:
+            height = int(height)
+            if height not in existing:
+                existing[height] = {}
+            if bhash not in existing[height]:
+                existing[height][bhash] = header
+            # only overwrite the header if we actually have it
+            if header != "":
+                existing[height][bhash] = header
     else:
         # create a new file from scratch with a header
         print(f"{args.header_csv} does not exist, using empty file")
-        existing = ["height,hash,header\n"]
 
     for tip in json.loads(cli("getchaintips")):
         if tip["status"] == "active" or tip["status"] == "invalid": continue
@@ -47,10 +60,11 @@ def main(args):
         blockhash = tip["hash"]
         while True:
             header_hex = cli("getblockheader", blockhash, "false")
-            line = f"{height},{blockhash},{header_hex}\n"
-            if line not in existing:
+            if height not in existing:
+                existing[height] = {}
+            if blockhash not in existing[height]:
+                existing[height][blockhash] = header_hex
                 print(f"Adding {height} {blockhash}")
-                existing.append(line)
 
             blockfile = f"{args.blocks_dir}/{height}-{blockhash}.bin"
             if args.get_full_blocks and not os.path.exists(blockfile):
@@ -69,10 +83,13 @@ def main(args):
             header = json.loads(cli("getblockheader", blockhash))
             blockhash = header["previousblockhash"]
 
-    f = open(args.header_csv, "w")
-    for l in sorted(existing, reverse=True):
-        f.write(l)
-    f.close()
+    with open(args.header_csv, "w", newline="") as f:
+        w = csv.writer(f, lineterminator='\n')
+        w.writerow(CSV_HEADER)
+        for height in sorted(existing, reverse=True):
+            for bhash in sorted(existing[height], reverse=True):
+                header = existing[height][bhash]
+                w.writerow([height, bhash, header])
 
 def get_args(argv):
     parser = argparse.ArgumentParser()
