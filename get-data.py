@@ -27,10 +27,12 @@ class Cli:
 
     def cli(self, *args, **kwargs):
         cmd = ["bitcoin-cli"] + self.rpcargs() + list(args)
-        out = subprocess.run(cmd, capture_output=True, **kwargs, check=True).stdout
-        if isinstance(out, bytes):
-            out = out.decode('utf8')
-        return out.strip()
+        try:
+            result = subprocess.run(cmd, capture_output=True, **kwargs, text=True, check=True)
+            return result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            print(f"Command '{' '.join(cmd)}' with exit code {e.returncode}: {e.stderr}")
+            exit(1)
 
 def main(args):
     cli = Cli(args).cli
