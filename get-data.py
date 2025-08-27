@@ -55,6 +55,11 @@ def main(args):
         # create a new file from scratch with a header
         print(f"{args.header_csv} does not exist, using empty file")
 
+    bci = json.loads(cli("getblockchaininfo"))
+    pruneheight = 0
+    if bci["pruned"]:
+        pruneheight = bci["pruneheight"]
+
     for tip in json.loads(cli("getchaintips")):
         if tip["status"] == "active" or tip["status"] == "invalid": continue
         depth = tip["branchlen"]
@@ -69,7 +74,7 @@ def main(args):
                 print(f"Adding {height} {blockhash}")
 
             blockfile = f"{args.blocks_dir}/{height}-{blockhash}.bin"
-            if args.get_full_blocks and not os.path.exists(blockfile):
+            if args.get_full_blocks and height >= pruneheight and tip["status"] in ["valid-headers","valid-fork"] and not os.path.exists(blockfile):
                 try:
                     blockhex = cli("getblock", blockhash, "0")
                     blockdata = open(blockfile, "wb")
