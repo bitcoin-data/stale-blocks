@@ -4,9 +4,11 @@
 # - file is ordered by block height in descending order
 # - header hashes match header (by hashing)
 # - header hashes are unique
+# - binary block files have a correct bitcoin block header
 
 import csv
 import hashlib
+import os
 
 EXPECTED_COLUMNS = 3
 
@@ -41,6 +43,17 @@ with open("stale-blocks.csv", "r") as f:
             assert header_hash == calculated_header_hash
 
         hash_count[header_hash] = hash_count.get(header_hash, 0) + 1
+
+        blockfile = f"blocks/{height}-{header_hash}.bin"
+        if os.path.exists(blockfile):
+            print(f"checking block file: {blockfile}")
+            with open(blockfile, "rb") as block:
+                header_bytes = block.read(80)
+                calculated_header_hash = bytes(reversed(dsha256(header_bytes))).hex()
+                assert header_hash == calculated_header_hash
+
+                header_hex = header_bytes.hex()
+                assert header == header_hex
 
 hash_appeared_multiple_times = False
 for e in hash_count.items():
