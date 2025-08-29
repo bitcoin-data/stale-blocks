@@ -36,3 +36,17 @@ These can be imported back to a Bitcoin Core node with, for example:
 ```
 cat blocks/813210-000000000000000000021c9f203786c0adcd7ae9a68a25d5e430d2a3dba613d5.bin | xxd -p | tr -d $'\n' | bitcoin-cli -stdin submitblock
 ```
+
+## Show missing headers and block
+
+To list the headers and block-files missing from the dataset, the following
+command can be used:
+
+```
+$ get-data.py --show-missing
+...
+Missing blockfile 845869 00000000000000000000858fe3cb999f449bcbfcadd3bdb240641b6b9c39bb30
+Missing blockfile 833411 000000000000000000018450917aeae08339ffd3172807420dd35c736032898f
+Missing header 824221 00000000000000000003a0653dbab14cc0f6fef121442b29d6b4005cdcdbc0d5
+...
+```
