@@ -34,8 +34,26 @@ class Cli:
             print(f"Command '{' '.join(cmd)}' with exit code {e.returncode}: {e.stderr}")
             exit(1)
 
+def show_missing(args):
+    if not os.path.exists(args.header_csv):
+        print("Could not find csv file")
+        return 1
+
+    reader = csv.reader(open(args.header_csv, "r", newline=''))
+    next(reader, None)  # skip the headers
+    for height, bhash, header in reader:
+        if header == "":
+            print(f"Missing header {height} {bhash}")
+        else:
+            blockfile = f"{args.blocks_dir}/{height}-{bhash}.bin"
+            if not os.path.exists(blockfile):
+                print(f"Missing blockfile {height} {bhash}")
+
 def main(args):
     cli = Cli(args).cli
+
+    if args.show_missing:
+        show_missing(args)
 
     existing = {}
     if os.path.exists(args.header_csv):
@@ -107,6 +125,8 @@ def get_args(argv):
     parser.add_argument("--get-full-blocks", default=False, action="store_true")
     parser.add_argument("--blocks-dir", default="blocks", type=str)
     parser.add_argument("--header-csv", default="stale-blocks.csv", type=str)
+
+    parser.add_argument("--show-missing", default=False, action="store_true")
 
     return parser.parse_args(argv)
 
