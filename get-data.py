@@ -66,10 +66,10 @@ def main(args):
         height = tip["height"]
         blockhash = tip["hash"]
         while True:
-            header_hex = cli("getblockheader", blockhash, "false")
             if height not in existing:
                 existing[height] = {}
             if blockhash not in existing[height]:
+                header_hex = cli("getblockheader", blockhash, "false")
                 existing[height][blockhash] = header_hex
                 print(f"Adding {height} {blockhash}")
 
