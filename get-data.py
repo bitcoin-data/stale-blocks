@@ -83,6 +83,9 @@ def main(args):
         depth = tip["branchlen"]
         height = tip["height"]
         blockhash = tip["hash"]
+        if height > bci["blocks"]:
+            print(f"Skipping new header {blockhash} (height={height} > tip={bci['blocks']})")
+            continue
         while True:
             if height not in existing:
                 existing[height] = {}
