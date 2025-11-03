@@ -95,7 +95,7 @@ def main(args):
                 print(f"Adding {height} {blockhash}")
 
             blockfile = f"{args.blocks_dir}/{height}-{blockhash}.bin"
-            if args.get_full_blocks and height >= pruneheight and tip["status"] in ["valid-headers","valid-fork"] and not os.path.exists(blockfile):
+            if height >= pruneheight and tip["status"] in ["valid-headers","valid-fork"] and not os.path.exists(blockfile):
                 try:
                     blockhex = cli("getblock", blockhash, "0")
                     blockdata = open(blockfile, "wb")
@@ -125,7 +125,6 @@ def get_args(argv):
     parser.add_argument("--rpc-host", default="", type=str)
     parser.add_argument("--rpc-pass", default="", type=str)
     parser.add_argument("--rpc-port", default="", type=str)
-    parser.add_argument("--get-full-blocks", default=False, action="store_true")
     parser.add_argument("--blocks-dir", default="blocks", type=str)
     parser.add_argument("--header-csv", default="stale-blocks.csv", type=str)
 
