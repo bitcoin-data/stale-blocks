@@ -1,0 +1,58 @@
+name: "Fech stale-blocks from mempool-space instances"
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "26 3 * * *"
+
+jobs:
+
+  fetch-and-pr:
+    runs-on: ubuntu-slim
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install requests
+        run: pip install requests
+      
+      - name: Run ci/fetch-mempool-space.py
+        run: python3 ci/fetch-mempool-space.py
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit changes
+        if: steps.changes.outputs.changes == 'true'
+        run: |
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+          BRANCH="$(date +%Y-%m)-auto-update"
+          git branch -D $BRANCH || true
+          git checkout -b $BRANCH
+          
+          git add stale-blocks.csv
+          git add blocks/*
+          
+          git commit -m "automated: add recent stale block(s) $(date +%Y-%m)"
+          git push origin $BRANCH
+
+      - name: Create PR
+        if: steps.changes.outputs.changes == 'true'
+        run: |
+          RANCH="$(date +%Y-%m)-auto-update"
+          gh pr create \
+            --title "Automated: add recent stale block(s) $(date +%Y-%m)" \
+            --body "Adds stale block(s) fetched from mempool-space instances. Please close/reopen or assign/unassign to trigger CI." \
+            --base master \
+            --head $RANCH
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
