@@ -1,9 +1,12 @@
 name: stale-blocks.csv sanity-check
 
-on:
-  push:
-    branches: [ master ]
+on:  
+  # To be able to trigger a rebuild manually by (un)assigning someone
+  # https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request
   pull_request:
+    types: [opened, reopened, synchronize, assigned, unassigned]
+    branches: [ master ]
+  push:
     branches: [ master ]
   workflow_dispatch:
 
