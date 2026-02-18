@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 import csv
-import os
+import struct
+from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -22,23 +23,44 @@ def has_block_file(height, hash):
     return (BLOCKS_DIR / f"{height}-{hash}.bin").exists()
 
 
+def decode_header(hex_str):
+    raw = bytes.fromhex(hex_str)
+    version, = struct.unpack_from("<i", raw, 0)
+    prev_hash = raw[4:36][::-1].hex()
+    merkle_root = raw[36:68][::-1].hex()
+    timestamp, = struct.unpack_from("<I", raw, 68)
+    bits, = struct.unpack_from("<I", raw, 72)
+    nonce, = struct.unpack_from("<I", raw, 76)
+    return {
+        "version": f"0x{version:08x}",
+        "prev_hash": prev_hash,
+        "merkle_root": merkle_root,
+        "timestamp": datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "bits": f"0x{bits:08x}",
+        "nonce": f"{nonce}",
+    }
+
+
 def generate_html(rows):
     total = len(rows)
     with_header = sum(1 for r in rows if r["header"])
     with_block = sum(1 for r in rows if has_block_file(r["height"], r["hash"]))
 
     table_rows = []
-    for r in rows:
+    for i, r in enumerate(rows):
         height = r["height"]
         hash = r["hash"]
         has_hdr = bool(r["header"])
         has_blk = has_block_file(height, hash)
 
-        hdr_cell = (
-            '<span class="text-green-400">present</span>'
-            if has_hdr
-            else '<span class="text-red-400">missing</span>'
-        )
+        if has_hdr:
+            hdr_cell = (
+                f'<button onclick="toggle(\'d{i}\')" '
+                f'class="text-green-400 hover:text-green-300 underline cursor-pointer">'
+                f'details</button>'
+            )
+        else:
+            hdr_cell = '<span class="text-red-400">missing</span>'
 
         if has_blk:
             blk_cell = (
@@ -55,6 +77,23 @@ def generate_html(rows):
             <td class="py-2 px-3 text-center">{blk_cell}</td>
           </tr>""")
 
+        if has_hdr:
+            hdr = decode_header(r["header"])
+            table_rows.append(f"""          <tr id="d{i}" class="hidden">
+            <td colspan="4" class="px-3 pb-3 pt-1">
+              <div class="bg-gray-900 rounded-lg p-4 border border-gray-800 text-sm font-mono grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                <span class="text-gray-500">hash</span>         <span class="select-all">{hash}</span>
+                <span class="text-gray-500">version</span>      <span>{hdr["version"]}</span>
+                <span class="text-gray-500">prev block</span>   <span class="select-all break-all">{hdr["prev_hash"]}</span>
+                <span class="text-gray-500">merkle root</span>  <span class="select-all break-all">{hdr["merkle_root"]}</span>
+                <span class="text-gray-500">timestamp</span>    <span>{hdr["timestamp"]}</span>
+                <span class="text-gray-500">bits</span>         <span>{hdr["bits"]}</span>
+                <span class="text-gray-500">nonce</span>        <span>{hdr["nonce"]}</span>
+                <span class="text-gray-500">hex</span>          <span class="max-w-[80ch] break-all">{r["header"]}</span>
+              </div>
+            </td>
+          </tr>""")
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -63,6 +102,7 @@ def generate_html(rows):
   <title>Bitcoin Stale Block Dataset</title>
   <meta name="description" content="A dataset of {total} stale block headers and full blocks observed on the Bitcoin network.">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>function toggle(id){{document.getElementById(id).classList.toggle("hidden")}}</script>
 </head>
 <body class="bg-gray-950 text-gray-300 min-h-screen">
   <div class="max-w-7xl mx-auto px-4 py-12">
