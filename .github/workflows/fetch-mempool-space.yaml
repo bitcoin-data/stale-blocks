@@ -40,24 +40,24 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
 
-          BRANCH="$(date +%Y-%m)-auto-update"
+          BRANCH="$(date +%Y-%m-%d)-auto-update"
           git branch -D $BRANCH || true
           git checkout -b $BRANCH
           
           git add stale-blocks.csv
           git add blocks/*
           
-          git commit -m "automated: add recent stale block(s) $(date +%Y-%m)"
+          git commit -m "automated: add recent stale block(s) $(date +%Y-%m-%d)"
           git push origin $BRANCH --force
 
       - name: Create PR
         if: steps.changes.outputs.changes == 'true'
         run: |
-          RANCH="$(date +%Y-%m)-auto-update"
+          BRANCH="$(date +%Y-%m-%d)-auto-update"
           gh pr create \
-            --title "Automated: add recent stale block(s) $(date +%Y-%m)" \
+            --title "Automated: add recent stale block(s) $(date +%Y-%m-%d)" \
             --body "Adds stale block(s) fetched from mempool-space instances. Please close/reopen or assign/unassign to trigger CI." \
             --base master \
-            --head $RANCH
+            --head $BRANCH
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
