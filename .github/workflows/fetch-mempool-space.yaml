@@ -48,7 +48,7 @@ jobs:
           git add blocks/*
           
           git commit -m "automated: add recent stale block(s) $(date +%Y-%m)"
-          git push origin $BRANCH
+          git push origin $BRANCH --force
 
       - name: Create PR
         if: steps.changes.outputs.changes == 'true'
