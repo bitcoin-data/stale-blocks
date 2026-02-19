@@ -95,17 +95,17 @@ def generate_html(rows):
           </tr>""")
 
     return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bitcoin Stale Block Dataset</title>
-  <meta name="description" content="A dataset of {total} stale block headers and full blocks observed on the Bitcoin network.">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>function toggle(id){{document.getElementById(id).classList.toggle("hidden")}}</script>
-</head>
-<body class="bg-gray-950 text-gray-300 min-h-screen">
-  <div class="max-w-7xl mx-auto px-4 py-12">
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Bitcoin Stale Block Dataset</title>
+      <meta name="description" content="A dataset of {total} stale block headers and full blocks observed on the Bitcoin network.">
+      <script src="https://cdn.tailwindcss.com"></script>
+      <script>function toggle(id){{document.getElementById(id).classList.toggle("hidden")}}</script>
+    </head>
+    <body class="bg-gray-950 text-gray-300 min-h-screen">
+      <div class="max-w-7xl mx-auto px-4 py-12">
 
     <header class="mb-10">
       <h1 class="text-3xl font-bold text-white mb-2">Bitcoin Stale Block Dataset</h1>
@@ -116,7 +116,6 @@ def generate_html(rows):
       <p class="mb-4">
         Stale blocks occur when two miners find a valid block at the same height.
         Only one can become part of the longest chain &mdash; the other becomes "stale."
-        These blocks are rarely preserved, making this dataset a unique historical record.
       </p>
       <p>
         Contribute your own stale block data using
@@ -154,16 +153,16 @@ def generate_html(rows):
             </tr>
           </thead>
           <tbody>
-{chr(10).join(table_rows)}
+    {chr(10).join(table_rows)}
           </tbody>
         </table>
       </div>
     </section>
 
-  </div>
-</body>
-</html>
-"""
+      </div>
+    </body>
+    </html>
+    """
 
 
 def main():
