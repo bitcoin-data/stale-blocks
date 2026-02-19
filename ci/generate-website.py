@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import csv
+import json
 import struct
 from datetime import datetime, timezone
 from pathlib import Path
@@ -41,6 +42,24 @@ def decode_header(hex_str):
         "bits": f"0x{bits:08x}",
         "nonce": f"{nonce}",
     }
+
+
+def build_chart_data(rows, bin_size=1000, window=10):
+    bins = {}
+    for r in rows:
+        b = int(r["height"]) // bin_size
+        bins[b] = bins.get(b, 0) + 1
+
+    lo, hi = min(bins), max(bins)
+    counts = [bins.get(b, 0) for b in range(lo, hi + 1)]
+
+    avg = []
+    for i in range(len(counts)):
+        start = max(0, i - window + 1)
+        avg.append(round(sum(counts[start:i + 1]) / (i - start + 1), 2))
+
+    labels = [b * bin_size for b in range(lo, hi + 1)]
+    return json.dumps({"labels": labels, "data": avg})
 
 
 def build_table_rows(rows):
@@ -102,6 +121,7 @@ def generate_html(rows):
         with_header=sum(1 for r in rows if r["header"]),
         with_block=sum(1 for r in rows if has_block_file(r["height"], r["hash"])),
         repo_url=REPO_URL,
+        chart_data=build_chart_data(rows),
         table_rows=build_table_rows(rows),
     )
 

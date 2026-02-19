@@ -6,6 +6,7 @@
   <title>Bitcoin Stale Block Dataset</title>
   <meta name="description" content="A dataset of $total stale block headers and full blocks observed on the Bitcoin network.">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>function toggle(id){document.getElementById(id).classList.toggle("hidden")}</script>
 </head>
 <body class="bg-gray-950 text-gray-300 min-h-screen">
@@ -44,6 +45,50 @@
         <div class="text-2xl font-bold text-white">$with_block</div>
       </div>
     </section>
+
+    <section class="mb-10">
+      <h2 class="text-xl font-bold text-white mb-4">Stale Block Rate</h2>
+      <div class="bg-gray-900 rounded-lg p-5 border border-gray-800">
+        <canvas id="rate-chart" height="80"></canvas>
+      </div>
+      <p class="text-gray-500 text-sm mt-2">Stale blocks per 1,000 blocks (~1 week), 10-bin rolling average.</p>
+    </section>
+    <script>
+      (function() {
+        var d = $chart_data;
+        new Chart(document.getElementById("rate-chart"), {
+          type: "line",
+          data: {
+            labels: d.labels,
+            datasets: [{
+              data: d.data,
+              borderColor: "#60a5fa",
+              borderWidth: 1.5,
+              pointRadius: 0,
+              fill: false,
+              tension: 0.3
+            }]
+          },
+          options: {
+            plugins: { legend: { display: false } },
+            scales: {
+              x: {
+                title: { display: true, text: "Block Height", color: "#9ca3af" },
+                ticks: { color: "#6b7280", maxTicksLimit: 12 },
+                grid: { color: "#1f2937" }
+              },
+              y: {
+                title: { display: true, text: "Stale Blocks / 1k Blocks", color: "#9ca3af" },
+                ticks: { color: "#6b7280" },
+                grid: { color: "#1f2937" },
+                beginAtZero: true
+              }
+            },
+            interaction: { intersect: false, mode: "index" }
+          }
+        });
+      })();
+    </script>
 
     <section>
       <div class="overflow-x-auto">
