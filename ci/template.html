@@ -7,6 +7,7 @@
   <meta name="description" content="A dataset of $total stale block headers and full blocks observed on the Bitcoin network.">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
   <script>function toggle(id){document.getElementById(id).classList.toggle("hidden")}</script>
 </head>
 <body class="bg-gray-950 text-gray-300 min-h-screen">
@@ -56,12 +57,12 @@
     <script>
       (function() {
         var d = $chart_data;
+        var points = d.labels.map(function(l, i) { return {x: l, y: d.data[i]}; });
         new Chart(document.getElementById("rate-chart"), {
           type: "line",
           data: {
-            labels: d.labels,
             datasets: [{
-              data: d.data,
+              data: points,
               borderColor: "#60a5fa",
               borderWidth: 1.5,
               pointRadius: 0,
@@ -70,9 +71,19 @@
             }]
           },
           options: {
-            plugins: { legend: { display: false } },
+            plugins: {
+              legend: { display: false },
+              annotation: {
+                annotations: [
+                  { type: "line", xMin: 390000, xMax: 390000, borderColor: "#f59e0b88", borderWidth: 1, borderDash: [4, 4], label: { display: true, content: "Relay Network", color: "#f59e0b", backgroundColor: "transparent", font: { size: 11 }, position: "end", rotation: -90, yAdjust: -10 } },
+                  { type: "line", xMin: 430000, xMax: 430000, borderColor: "#a78bfa88", borderWidth: 1, borderDash: [4, 4], label: { display: true, content: "Compact Blocks", color: "#a78bfa", backgroundColor: "transparent", font: { size: 11 }, position: "end", rotation: -90, yAdjust: -10 } },
+                  { type: "line", xMin: 490000, xMax: 490000, borderColor: "#34d39988", borderWidth: 1, borderDash: [4, 4], label: { display: true, content: "FIBRE", color: "#34d399", backgroundColor: "transparent", font: { size: 11 }, position: "end", rotation: -90, yAdjust: -10 } }
+                ]
+              }
+            },
             scales: {
               x: {
+                type: "linear",
                 title: { display: true, text: "Block Height", color: "#9ca3af" },
                 ticks: { color: "#6b7280", maxTicksLimit: 12 },
                 grid: { color: "#1f2937" }
