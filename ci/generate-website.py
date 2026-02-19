@@ -44,10 +44,13 @@ def decode_header(hex_str):
     }
 
 
-def build_chart_data(rows, bin_size=1000, window=10):
+def build_chart_data(rows, bin_size=1000, window=10, min_height=200_000):
     bins = {}
     for r in rows:
-        b = int(r["height"]) // bin_size
+        h = int(r["height"])
+        if h < min_height:
+            continue
+        b = h // bin_size
         bins[b] = bins.get(b, 0) + 1
 
     lo, hi = min(bins), max(bins)
