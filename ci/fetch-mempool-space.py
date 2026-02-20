@@ -83,20 +83,19 @@ def fetch_tips_from_url(base_url):
         print(f"Failed fetching {base_url}: {e}")
         return []
 
-
-
 def fetch_raw_block(block_hash):
+    print(f"Trying to fetch raw block {block_hash}..")
     for base_url in URLS:
         try:
-            r = requests.get(f"{base_url}/api/block/{block_hash}/hex", timeout=15)
+            url = f"{base_url}/api/block/{block_hash}/raw"
+            r = requests.get(url, timeout=15)
             r.raise_for_status()
-            return bytes.fromhex(r.text.strip())
-        except Exception:
+            return r.content
+        except Exception as e:
+            print(f"failed to fetch from {url}: {e}")
             continue
     print(f"Failed fetching raw block {block_hash}")
     return None
-
-
 
 def collect_stale_rows():
     merged = {}
