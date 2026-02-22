@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # checks that:
 # - file has only three columns (height, hash, header)
 # - height is an integer > 0
