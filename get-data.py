@@ -89,7 +89,7 @@ def main(args):
         while True:
             if height not in existing:
                 existing[height] = {}
-            if blockhash not in existing[height]:
+            if blockhash not in existing[height] or existing[height][blockhash] == "":
                 header_hex = cli("getblockheader", blockhash, "false")
                 existing[height][blockhash] = header_hex
                 print(f"Adding {height} {blockhash}")
