@@ -22,28 +22,29 @@ git diff stale-blocks.csv
 ```
 
 Create a commit and open a PR. Keep in mind that this allows to figure out how
-long you've been running a Bitcoin Core node. If that's a problem, you can also
+long you've been running a Bitcoin node. If that's a problem, you can also
 submit your data to the project's maintainer to contribute anonymously.
 
 ## Contributing full stale blocks
 
 Where possible, it's favorable to have the full blocks belonging to the stale
-block headers. You can use the `--get-full-blocks` argument to get-data.py
-to store the full blocks as binary blobs in the `blocks` direcory.
+block headers. The `get-data.py` script will try to fetch them and store the
+full blocks as binary blobs in the `blocks` directory. Feel free to commit these
+too.
 
-These can be imported back to a Bitcoin Core node with, for example:
+The full blocks can be imported back to a Bitcoin node with, for example:
 
-```
+```bash
 cat blocks/813210-000000000000000000021c9f203786c0adcd7ae9a68a25d5e430d2a3dba613d5.bin | xxd -p | tr -d $'\n' | bitcoin-cli -stdin submitblock
 ```
 
-## Show missing headers and block
+## Show missing headers and blocks
 
 To list the headers and block-files missing from the dataset, the following
 command can be used:
 
-```
-$ get-data.py --show-missing
+```bash
+$ python3 get-data.py --show-missing
 ...
 Missing blockfile 845869 00000000000000000000858fe3cb999f449bcbfcadd3bdb240641b6b9c39bb30
 Missing blockfile 833411 000000000000000000018450917aeae08339ffd3172807420dd35c736032898f
