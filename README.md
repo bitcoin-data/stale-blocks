@@ -51,3 +51,10 @@ Missing blockfile 833411 000000000000000000018450917aeae08339ffd3172807420dd35c7
 Missing header 824221 00000000000000000003a0653dbab14cc0f6fef121442b29d6b4005cdcdbc0d5
 ...
 ```
+
+## License
+
+This repository contains both code and data, which are licensed separately:
+
+- **Code** (in `get-data.py`, `ci/*` and other source files) is licensed under the MIT License. See `LICENSE`.
+- **Data** (in `stale-blocks.csv` and `blocks/*`) is dedicated to the public domain under CC0 1.0. See `LICENSE-DATA`.
