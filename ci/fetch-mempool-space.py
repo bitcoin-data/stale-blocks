@@ -152,7 +152,7 @@ def main():
         if raw_block:
             with open(block_path, "wb") as f:
                 f.write(raw_block)
-            print(f"Saved raw block {block_hash} ({len(raw_block)} bytes)")
+            print(f"Saved raw block {hash} ({len(raw_block)} bytes)")
 
 
 if __name__ == "__main__":
