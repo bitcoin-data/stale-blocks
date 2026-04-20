@@ -4,7 +4,7 @@
 # - height is an integer > 0
 # - file is ordered by block height in descending order
 # - hash is 32-byte hex
-# - header is empty or 80-byte hex and hashes to hash
+# - header is empty or 80-byte hex, hashes to hash, and satisfies the PoW target encoded in nBits
 # - hashes are unique
 # - block files (if present) start with a matching 80-byte header
 # - missing/mismatching headers report the expected header
@@ -22,6 +22,17 @@ def dsha256(d):
     h1 = hashlib.sha256(d).digest()
     h2 = hashlib.sha256(h1).digest()
     return h2
+
+
+def target_from_bits(bits):
+    # Expand ordinary positive Bitcoin compact nBits values (4 bytes) to a
+    # 256-bit target integer. High byte is the size/exponent; low 3 bytes are
+    # the mantissa.
+    exponent = bits >> 24
+    mantissa = bits & 0x007FFFFF
+    if exponent <= 3:
+        return mantissa >> (8 * (3 - exponent))
+    return mantissa << (8 * (exponent - 3))
 
 
 def try_parse_hex(field, value, expected_len_bytes, context, problems, required=False):
@@ -80,6 +91,14 @@ with open("stale-blocks.csv", "r", newline="") as f:
                 calculated_header_hash = bytes(reversed(dsha256(header_bytes))).hex()
                 if header_hash != calculated_header_hash:
                     problems.append(f"stale-blocks.csv:{row_i}: header hash mismatch: {header_hash} != {calculated_header_hash}")
+                else:
+                    bits = int.from_bytes(header_bytes[72:76], "little")
+                    target = target_from_bits(bits)
+                    if int(calculated_header_hash, 16) > target:
+                        problems.append(
+                            f"stale-blocks.csv:{row_i}: header does not satisfy PoW target: "
+                            f"hash {calculated_header_hash} > target {target:064x} (nBits {bits:08x})"
+                        )
 
         hash_count[header_hash] = hash_count.get(header_hash, 0) + 1
 
