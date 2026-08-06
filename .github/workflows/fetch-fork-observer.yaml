@@ -1,4 +1,4 @@
-name: "Fech stale-blocks from mempool-space instances"
+name: "Fetch stale-blocks from fork-observer instances"
 on:
   workflow_dispatch:
   schedule:
@@ -19,11 +19,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install requests
-        run: pip install requests
-      
-      - name: Run ci/fetch-mempool-space.py
-        run: python3 ci/fetch-mempool-space.py
+      - name: Run ci/fetch-fork-observer.py
+        run: python3 ci/fetch-fork-observer.py
 
       - name: Check for changes
         id: changes
@@ -56,7 +53,7 @@ jobs:
           BRANCH="$(date +%Y-%m-%d)-auto-update"
           gh pr create \
             --title "Automated: add recent stale block(s) $(date +%Y-%m-%d)" \
-            --body "Adds stale block(s) fetched from mempool-space instances. Please close/reopen or assign/unassign to trigger CI." \
+            --body "Adds stale block(s) fetched from fork-observer instances. Please close/reopen or assign/unassign to trigger CI." \
             --base master \
             --head $BRANCH
         env:
