@@ -13,6 +13,11 @@ jobs:
 
   fetch-and-pr:
     runs-on: ubuntu-slim
+    env:
+      # The branch the automated updates are force-pushed to. It's always built
+      # from the current master, so it holds every stale block that hasn't been
+      # merged yet - not just the ones found in this run.
+      BRANCH: auto-update
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -25,36 +30,77 @@ jobs:
       - name: Check for changes
         id: changes
         run: |
-          if [[ -n "$(git status --porcelain)" ]]; then
-            echo "changes=true" >> $GITHUB_OUTPUT
-          else
+          if [[ -z "$(git status --porcelain)" ]]; then
             echo "changes=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "changes=true" >> $GITHUB_OUTPUT
+
+          # The heights of the added stale blocks, newest first. Only the first
+          # few go into the commit message and PR title, all of them into the
+          # PR body.
+          mapfile -t HEIGHTS < <(git diff -U0 -- stale-blocks.csv | sed -n 's/^+\([0-9]\+\),.*/\1/p')
+
+          SUMMARY="$(printf '%s, ' "${HEIGHTS[@]:0:3}")"
+          SUMMARY="${SUMMARY%, }"
+          if [[ ${#HEIGHTS[@]} -gt 3 ]]; then
+            SUMMARY="$SUMMARY (+$((${#HEIGHTS[@]} - 3)) more)"
           fi
 
+          ALL="$(printf '%s, ' "${HEIGHTS[@]}")"
+          echo "subject=add recent stale block(s) ${SUMMARY:+$SUMMARY }$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+          echo "heights=${ALL%, }" >> $GITHUB_OUTPUT
+
       - name: Commit changes
+        id: commit
         if: steps.changes.outputs.changes == 'true'
         run: |
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
 
-          BRANCH="$(date +%Y-%m-%d)-auto-update"
-          git branch -D $BRANCH || true
-          git checkout -b $BRANCH
-          
+          git checkout -B $BRANCH
+
           git add stale-blocks.csv
           git add blocks/*
           
-          git commit -m "automated: add recent stale block(s) $(date +%Y-%m-%d)"
+          git commit -m "automated: ${{ steps.changes.outputs.subject }}" \
+                     -m "Stale block(s) at height(s) ${{ steps.changes.outputs.heights }}, fetched from fork-observer instances."
+
+          # Whether this run changes what an open PR contains. A run that finds
+          # nothing new still rebuilds the same branch content from master, and
+          # we don't want to announce that as an update.
+          git fetch -q origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" 2> /dev/null || true
+          if git rev-parse -q --verify origin/$BRANCH > /dev/null &&
+             [[ "$(git rev-parse HEAD^{tree})" == "$(git rev-parse origin/$BRANCH^{tree})" ]]; then
+            echo "updated=false" >> $GITHUB_OUTPUT
+          else
+            echo "updated=true" >> $GITHUB_OUTPUT
+          fi
+
+          # The branch is rebuilt from master on every run, so its history is
+          # replaced rather than extended.
           git push origin $BRANCH --force
 
-      - name: Create PR
+      - name: Create or update PR
         if: steps.changes.outputs.changes == 'true'
         run: |
-          BRANCH="$(date +%Y-%m-%d)-auto-update"
-          gh pr create \
-            --title "Automated: add recent stale block(s) $(date +%Y-%m-%d)" \
-            --body "Adds stale block(s) fetched from fork-observer instances. Please close/reopen or assign/unassign to trigger CI." \
-            --base master \
-            --head $BRANCH
+          TITLE="Automated: ${{ steps.changes.outputs.subject }}"
+          BODY="Adds the stale block(s) at height(s) ${{ steps.changes.outputs.heights }}, fetched from fork-observer instances. Please close/reopen or assign/unassign to trigger CI."
+
+          # The force-push already updated an open PR's commits. Only its title
+          # and body still describe the previous run, so update those instead of
+          # opening a second PR for the same branch.
+          PR="$(gh pr list --head $BRANCH --state open --json number --jq '.[0].number')"
+          if [[ -n "$PR" ]]; then
+            gh pr edit "$PR" --title "$TITLE" --body "$BODY"
+
+            # A force-push doesn't notify anyone subscribed to the PR, so leave
+            # a comment when one changed what the PR contains.
+            if [[ "${{ steps.commit.outputs.updated }}" == "true" ]]; then
+              gh pr comment "$PR" --body "Force-pushed \`$BRANCH\`: it now adds the stale block(s) at height(s) ${{ steps.changes.outputs.heights }}. The branch is rebuilt from \`master\` on every run, so it holds every stale block that isn't merged yet."
+            fi
+          else
+            gh pr create --title "$TITLE" --body "$BODY" --base master --head $BRANCH
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
