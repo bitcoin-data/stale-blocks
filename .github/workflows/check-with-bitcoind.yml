@@ -1,0 +1,51 @@
+name: check with bitcoind
+
+# Checks stale-blocks.csv and the block files against the consensus rules that
+# need chain context, by handing them to a Bitcoin Core node holding the mainnet
+# header chain. See ci/check-with-bitcoind.py.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, assigned, unassigned]
+    branches: [ master ]
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  check-with-bitcoind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      # Needs a release with checkpoints removed: until then Core rejected every
+      # fork below height 295000 with bad-fork-prior-to-checkpoint, which is
+      # where a third of these headers are.
+      BITCOIN_VERSION: "31.1"
+      BITCOIN_SHA256: "b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install Bitcoin Core
+        run: |
+          tarball="bitcoin-$BITCOIN_VERSION-x86_64-linux-gnu.tar.gz"
+          curl -sSL --retry 3 --remote-name \
+            "https://bitcoincore.org/bin/bitcoin-core-$BITCOIN_VERSION/$tarball"
+          echo "$BITCOIN_SHA256  $tarball" | sha256sum --check
+          tar -xzf "$tarball"
+          echo "$PWD/bitcoin-$BITCOIN_VERSION/bin" >> "$GITHUB_PATH"
+
+      - name: start bitcoind
+        # -connect=0 keeps the node off the P2P network entirely: the header
+        # chain arrives over HTTP in the next step, and no block is ever wanted.
+        # -daemonwait returns once the RPC server is up, so nothing here has to
+        # poll or sleep waiting for the node to be ready.
+        run: bitcoind -daemonwait -connect=0 -blocksonly -prune=550
+
+      - name: check headers and blocks against the node
+        run: python3 ci/check-with-bitcoind.py
+
+      - name: bitcoind log
+        if: failure()
+        run: tail -50 ~/.bitcoin/debug.log
