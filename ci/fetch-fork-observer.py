@@ -109,7 +109,9 @@ def main():
         print("No new stale blocks.")
         return
 
-    sorted_rows = sorted({**existing, **new}.values(), key=lambda x: x[0], reverse=True)
+    # Sorted by height, then hash, both descending. The hash tie-break keeps the
+    # order stable no matter in which run a block at a known height shows up.
+    sorted_rows = sorted({**existing, **new}.values(), key=lambda x: (x[0], x[1]), reverse=True)
     with open(CSV_FILE, "w") as f:
         writer = csv.writer(f, lineterminator="\n")
         writer.writerow(["height", "hash", "header"])
