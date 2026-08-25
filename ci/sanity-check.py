@@ -2,7 +2,7 @@
 # checks that:
 # - file has only three columns (height, hash, header)
 # - height is an integer > 0
-# - file is ordered by block height in descending order
+# - file is ordered by block height in descending order, ties broken by hash descending
 # - hash is 32-byte hex
 # - header is empty or 80-byte hex, hashes to hash, and satisfies the PoW target encoded in nBits
 # - hashes are unique
@@ -61,6 +61,7 @@ problems = []
 
 with open("stale-blocks.csv", "r", newline="") as f:
     last_height = None
+    last_hash = None
     reader = csv.reader(f)
     next(reader, None)  # Skip header row
     for row_i, row in enumerate(reader, start=2):
@@ -78,9 +79,13 @@ with open("stale-blocks.csv", "r", newline="") as f:
 
         if last_height is not None and last_height < height:
             problems.append(f"stale-blocks.csv:{row_i}: file not ordered by height descending: {last_height} < {height}")
-        last_height = height
 
         header_hash, header = row[1], row[2]
+
+        if last_height == height and last_hash < header_hash:
+            problems.append(f"stale-blocks.csv:{row_i}: blocks at height {height} not ordered by hash descending: {last_hash} < {header_hash}")
+
+        last_height, last_hash = height, header_hash
 
         try_parse_hex("hash", header_hash, 32, f"stale-blocks.csv:{row_i}", problems, required=True)
 
