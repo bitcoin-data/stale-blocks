@@ -25,7 +25,7 @@ jobs:
       BITCOIN_SHA256: "b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: install Bitcoin Core
         run: |
