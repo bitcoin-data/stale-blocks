@@ -1,0 +1,86 @@
+name: "Nightly release"
+
+# Publishes a GitHub release when master moved since the last one. Zenodo is
+# hooked up to this repository's releases and mints a new version DOI for each,
+# see https://doi.org/10.5281/zenodo.22667157. Nights where nothing was merged
+# don't produce a release - and with it no new Zenodo version.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # A while after the fetch-fork-observer run, so stale blocks merged during
+    # the day are archived the following night.
+    - cron: "42 4 * * *"
+
+# Allow creating the tag and the release
+permissions:
+  contents: write
+
+jobs:
+
+  release:
+    runs-on: ubuntu-slim
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # Full history and all tags: the release notes list the commits since
+          # the last release and the tag has to be checked for a collision.
+          fetch-depth: 0
+
+      - name: Check for changes since the last release
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PREV="$(gh release view --json tagName --jq .tagName 2> /dev/null || true)"
+          echo "last release: ${PREV:-none}"
+          echo "previous=$PREV" >> $GITHUB_OUTPUT
+
+          # Nothing was merged since the last release, so a new Zenodo version
+          # would archive a tree that already has a DOI.
+          if [[ -n "$PREV" ]] &&
+             [[ "$(git rev-parse -q --verify "refs/tags/$PREV^{commit}" || true)" == "$(git rev-parse HEAD)" ]]; then
+            echo "no commits since $PREV, nothing to release"
+            echo "release=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "release=true" >> $GITHUB_OUTPUT
+
+          # The version is the current date. Zenodo takes the tag name as the
+          # version of the record it creates.
+          DATE="$(date -u +%Y-%m-%d)"
+
+          # A second release on the same date only happens when the workflow
+          # runs more than once a day, e.g. when triggered manually.
+          TAG="$DATE"
+          i=1
+          while git rev-parse -q --verify "refs/tags/$TAG" > /dev/null; do
+            TAG="$DATE.$i"
+            i=$((i + 1))
+          done
+          echo "releasing $TAG"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Create release
+        if: steps.check.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.check.outputs.tag }}
+          PREV: ${{ steps.check.outputs.previous }}
+        run: |
+          TOTAL=$(($(wc -l < stale-blocks.csv) - 1))
+          HEADERS=$(awk -F, 'NR > 1 && $3 != ""' stale-blocks.csv | wc -l)
+          BLOCKS=$(ls blocks/*.bin | wc -l)
+
+          {
+            echo "Snapshot of the dataset: $TOTAL stale blocks, $HEADERS of them with a header and $BLOCKS with a full block."
+            echo
+            echo "Changes since ${PREV:-the first commit}:"
+            echo
+            git log --no-merges --format="- %s" "${PREV:+$PREV..}HEAD"
+          } > "$RUNNER_TEMP/notes.md"
+
+          gh release create "$TAG" --target "$GITHUB_SHA" \
+                                   --title "$TAG" \
+                                   --notes-file "$RUNNER_TEMP/notes.md"
