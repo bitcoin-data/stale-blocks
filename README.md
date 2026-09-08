@@ -1,6 +1,35 @@
 # stale-blocks
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22667157.svg)](https://doi.org/10.5281/zenodo.22667157)
+
 Dataset of stale headers and blocks observed on the Bitcoin network.
+
+## Using this dataset
+
+The dashboard at
+[bitcoin-data.github.io/stale-blocks](https://bitcoin-data.github.io/stale-blocks/)
+shows the current contents of the dataset: the stale-block rate over time and
+every stale block with its decoded header.
+
+The data itself lives in two places:
+
+- [`stale-blocks.csv`](./stale-blocks.csv): one row per stale block, with its
+  height, its hash and, where known, the raw block header as hex.
+- [`blocks/`](./blocks): the full blocks, where we have them, as binary files
+  named `<height>-<hash>.bin`.
+
+Releases of this repository are archived on
+[Zenodo](https://doi.org/10.5281/zenodo.22667157), which mints a DOI for each of
+them. The DOI above covers all versions and always resolves to the newest one:
+
+> bitcoin-data/stale-blocks: Dataset of stale headers and blocks observed on the
+> Bitcoin network. https://doi.org/10.5281/zenodo.22667157
+
+Every release also has a version DOI of its own, listed on the Zenodo page.
+Cite that one to point at the exact snapshot of the data that was used.
+
+The data is public domain (CC0 1.0) and attribution isn't required, but it helps
+others find the dataset.
 
 ## Contributing stale-block headers
 
