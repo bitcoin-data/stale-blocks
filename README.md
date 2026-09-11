@@ -5,7 +5,7 @@
 Dataset of stale headers and blocks observed on the Bitcoin network.
 
 Known consensus-invalid headers and blocks belong in the
-[invalid-blocks dataset](https://github.com/bitcoin-data/invalid-blocks/tree/321395ecffa69b97dd9bb6a06325b6fdf4b6440d).
+[invalid-blocks dataset](https://github.com/bitcoin-data/invalid-blocks).
 Valid proof of work alone does not establish that a block is consensus-valid.
 The repository’s checks do not reconstruct the UTXO state at each block’s parent,
 so passing them does not establish full consensus validity.
