@@ -22,6 +22,39 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - run: python3 ci/generate-website.py
+
+      # The header tree at /tree is rendered by a fork-observer instance that
+      # runs only for this job: its database is built from block-dn.org and
+      # the dataset, and its API responses are exported as static files. See
+      # ci/fork-observer/README.md.
+      - name: Install nix
+        uses: cachix/install-nix-action@v31
+        with:
+          # The 0xb10c/nix CI builds its packages against this channel and
+          # pushes them to its cachix cache. Using the same nixpkgs makes this
+          # a download instead of a build.
+          nix_path: nixpkgs=channel:nixos-26.05
+      - name: Set up the b10c-nixpkgs cachix cache
+        uses: cachix/cachix-action@v17
+        with:
+          name: b10c-nixpkgs
+      - name: Build fork-observer
+        run: nix-build https://github.com/0xb10c/nix/archive/master.tar.gz -A fork-observer -o fork-observer
+
+      - name: Build the fork-observer database
+        run: python3 ci/fork-observer-db.py fork-observer-db/fork-observer.sqlite
+      - name: Start fork-observer
+        run: |
+          CONFIG_FILE=ci/fork-observer/config.toml RUST_LOG=info \
+            nohup ./fork-observer/bin/fork-observer > fork-observer.log 2>&1 &
+      - name: Export the header tree
+        run: python3 ci/fork-observer-site.py
+      - name: Stop fork-observer
+        if: always()
+        run: |
+          cat fork-observer.log
+          pkill fork-observer || true
+
       - uses: actions/upload-pages-artifact@v4
         with:
           path: site
