@@ -8,6 +8,8 @@
 # - hashes are unique
 # - block files (if present) start with a matching 80-byte header
 # - missing/mismatching headers report the expected header
+# - blocks/ holds nothing but the block files of rows
+# - no .bin file sits outside blocks/, and nothing large but the dataset
 
 import csv
 import hashlib
@@ -16,6 +18,19 @@ import sys
 
 EXPECTED_COLUMNS = 3
 HEADER_LEN = 80
+BLOCKS_DIR = "blocks"
+# Directories the walk for stray files stays out of: the block files proper and
+# the generated website, plus hidden directories, which hold local tooling
+# rather than repository data. .github is the one hidden directory that does.
+SKIPPED_DIRS = {BLOCKS_DIR, "site"}
+WALKED_HIDDEN_DIRS = {".github"}
+# Nothing outside blocks/ is data but the dataset itself: the code and the
+# licenses all stay under 14 kB. Anything else this large is a block that
+# landed in the wrong place, or something else that doesn't belong. Blocks go
+# down to a few hundred bytes, so no size limit catches every misplaced one;
+# the .bin rule below is what does.
+MAX_BYTES_OUTSIDE_BLOCKS = 64 * 1024
+OVERSIZE_EXEMPT = {"stale-blocks.csv"}
 
 
 def dsha256(d):
@@ -58,6 +73,7 @@ hash_count = dict()
 total_headers = 0
 total_blocks = 0
 problems = []
+expected_blockfiles = set()
 
 with open("stale-blocks.csv", "r", newline="") as f:
     last_height = None
@@ -107,7 +123,9 @@ with open("stale-blocks.csv", "r", newline="") as f:
 
         hash_count[header_hash] = hash_count.get(header_hash, 0) + 1
 
-        blockfile = f"blocks/{height}-{header_hash}.bin"
+        blockfile_name = f"{height}-{header_hash}.bin"
+        expected_blockfiles.add(blockfile_name)
+        blockfile = f"{BLOCKS_DIR}/{blockfile_name}"
         if os.path.exists(blockfile):
             total_blocks += 1
             with open(blockfile, "rb") as block:
@@ -130,6 +148,24 @@ with open("stale-blocks.csv", "r", newline="") as f:
 for header_hash, count in hash_count.items():
     if count > 1:
         problems.append(f"The hash {header_hash} appeared {count} times. It should only appear once.")
+
+unexpected = sorted(entry for entry in os.listdir(BLOCKS_DIR) if entry not in expected_blockfiles)
+for entry in unexpected:
+    problems.append(f"{BLOCKS_DIR}/{entry}: does not belong to any row in stale-blocks.csv")
+
+for dirpath, dirnames, filenames in os.walk("."):
+    dirnames[:] = [
+        d for d in dirnames
+        if os.path.relpath(os.path.join(dirpath, d)) not in SKIPPED_DIRS
+        and (not d.startswith(".") or d in WALKED_HIDDEN_DIRS)
+    ]
+    for name in filenames:
+        path = os.path.relpath(os.path.join(dirpath, name))
+        size = os.path.getsize(path)
+        if name.lower().endswith(".bin"):
+            problems.append(f"{path}: block files belong in {BLOCKS_DIR}/, named <height>-<hash>.bin")
+        elif path not in OVERSIZE_EXEMPT and size > MAX_BYTES_OUTSIDE_BLOCKS:
+            problems.append(f"{path}: {size} bytes, over the {MAX_BYTES_OUTSIDE_BLOCKS} byte limit for files outside {BLOCKS_DIR}/")
 
 if problems:
     print("sanity-check failed:")
