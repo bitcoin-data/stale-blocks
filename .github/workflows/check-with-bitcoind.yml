@@ -1,8 +1,9 @@
 name: check with bitcoind
 
 # Checks stale-blocks.csv and the block files against the consensus rules that
-# need chain context, by handing them to a Bitcoin Core node holding the mainnet
-# header chain. See ci/check-with-bitcoind.py.
+# need chain context, and checks that no row is a main-chain block, by handing
+# them to a Bitcoin Core node holding the mainnet header chain.
+# See ci/check-with-bitcoind.py.
 
 on:
   pull_request:

@@ -21,6 +21,17 @@
 # Core derives a block's height from its parent, so an accepted header also
 # says whether the height recorded in the CSV is the block's real one.
 #
+# The chain the node accepts settles one more thing no header says about
+# itself: whether its block is on the main chain, which is the one thing a
+# stale block cannot be. A row whose hash appears in that chain is a main-chain
+# block. That reaches every row, including the ones carrying no header, since
+# the hash is all it takes.
+#
+# Core cannot be asked this hash by hash here. A node holding headers and no
+# blocks has an active chain of nothing but genesis, so every header it knows,
+# main chain or not, comes back from getblockheader with -1 confirmations and
+# no height on any chain the node would follow.
+#
 # submitblock covers the rules that need the whole block, but not the chain's
 # unspent outputs:
 # - every transaction hashes into the merkle root committed in the header,
@@ -45,6 +56,7 @@
 import base64
 import csv
 import glob
+import hashlib
 import json
 import os
 import sys
@@ -109,6 +121,10 @@ def rpc_call(auth, method, *params):
     return rpc_batch(auth, [(method, list(params))])[0]
 
 
+def header_hash(header):
+    return hashlib.sha256(hashlib.sha256(header).digest()).digest()[::-1].hex()
+
+
 def error_message(answer):
     # The reason a call failed, or None if it didn't.
     return answer["error"]["message"] if answer.get("error") else None
@@ -141,9 +157,11 @@ def import_headers(auth, blob):
     if len(blob) % HEADER_LEN != 0:
         sys.exit(f"header chain: {len(blob)} bytes after the prefix is not a whole number of headers")
 
+    chain = [blob[i:i + HEADER_LEN] for i in range(0, len(blob), HEADER_LEN)]
+
     # The node starts life with the genesis block, and a header whose parent it
     # doesn't know is refused, so genesis is skipped rather than submitted.
-    headers = [blob[i:i + HEADER_LEN].hex() for i in range(HEADER_LEN, len(blob), HEADER_LEN)]
+    headers = [header.hex() for header in chain[1:]]
     for i in range(0, len(headers), IMPORT_BATCH):
         for answer in rpc_batch(auth, [("submitheader", [h]) for h in headers[i:i + IMPORT_BATCH]]):
             error = error_message(answer)
@@ -151,9 +169,10 @@ def import_headers(auth, blob):
                 sys.exit(f"header chain: header {i + answer['id']}: {error}")
 
     print(f"  imported {len(headers)} headers")
+    return {header_hash(header): height for height, header in enumerate(chain)}
 
 
-def require_chain_reaches(auth, height):
+def require_chain_reaches(auth, main_chain, height):
     # Every check here is made against a block's parent, so the node's chain has
     # to reach the highest block in the file. A chain that ends too soon would
     # otherwise report the newest rows as having an unknown parent, which this
@@ -161,6 +180,40 @@ def require_chain_reaches(auth, height):
     chain = rpc_call(auth, "getblockchaininfo")["result"]
     if chain["headers"] < height:
         sys.exit(f"node has {chain['headers']} headers, but {CSV_FILE} goes up to {height}")
+
+    # The node also has to agree about where the chain it was handed ends. That
+    # is what puts a height on the hashes the main-chain check compares rows
+    # against, and it catches a chain that arrived short or scrambled.
+    tip_hash, tip_height = max(main_chain.items(), key=lambda entry: entry[1])
+    answer = rpc_call(auth, "getblockheader", tip_hash)
+    error = error_message(answer)
+    if error:
+        sys.exit(f"node does not know {tip_hash}, the tip of the chain it was handed: {error}")
+    if answer["result"]["height"] != tip_height:
+        sys.exit(
+            f"the chain handed to the node ends at height {tip_height}, "
+            f"but the node puts {tip_hash} at height {answer['result']['height']}"
+        )
+
+
+def check_not_main_chain(rows, main_chain):
+    # main_chain holds the hash of every block in the chain the node accepted,
+    # against the height the node put it at. A row's hash appearing in it is a
+    # row that names a main-chain block.
+    #
+    # The node is what makes that chain worth comparing rows against: it checked
+    # the proof of work, the difficulty and the parent of every header in it,
+    # and agreed about the height its tip sits at. It is also the same chain the
+    # header and block checks below judge every row against.
+    print(f"checking that none of the {len(rows)} rows is a main-chain block")
+
+    problems = [
+        f"{height} {row_hash}: is a main-chain block, at height {main_chain[row_hash]}"
+        for height, row_hash, _ in rows if row_hash in main_chain
+    ]
+
+    print(f"  {len(rows) - len(problems)} not on the main chain")
+    return problems
 
 
 def read_rows():
@@ -238,9 +291,10 @@ def main():
     auth = credentials()
 
     print("importing the mainnet header chain")
-    import_headers(auth, fetch_header_chain(sys.argv[1] if len(sys.argv) > 1 else None))
-    require_chain_reaches(auth, max(height for height, _, _ in rows))
+    main_chain = import_headers(auth, fetch_header_chain(sys.argv[1] if len(sys.argv) > 1 else None))
+    require_chain_reaches(auth, main_chain, max(height for height, _, _ in rows))
 
+    main_chain_problems = check_not_main_chain(rows, main_chain)
     header_problems, unchecked = check_headers(auth, rows)
     block_problems = check_blocks(auth)
 
@@ -251,7 +305,7 @@ def main():
         for u in unchecked:
             print(f"  {u}")
 
-    problems = header_problems + block_problems
+    problems = main_chain_problems + header_problems + block_problems
     if problems:
         print("\ncheck-with-bitcoind failed:")
         for problem in problems:
