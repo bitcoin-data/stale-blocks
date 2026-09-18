@@ -3,30 +3,25 @@ name: Deploy Website
 on:
   push:
     branches: [master]
+  # TEMPORARY: runs the build on pull requests, without deploying, to test the
+  # header tree steps. Remove together with the other TEMPORARY parts below
+  # once that's done.
+  pull_request:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - run: python3 ci/generate-website.py
 
-      # The header tree at /tree is rendered by a fork-observer instance that
-      # runs only for this job: its database is built from block-dn.org and
-      # the dataset, and its API responses are exported as static files. See
-      # ci/fork-observer/README.md.
+      # The header tree on the dashboard is rendered by a fork-observer
+      # instance that runs only for this job: its database is built from
+      # block-dn.org and the dataset, and its tree is exported as static
+      # files. See ci/fork-observer/README.md.
       - name: Install nix
         uses: cachix/install-nix-action@v31
         with:
@@ -55,8 +50,32 @@ jobs:
           cat fork-observer.log
           pkill fork-observer || true
 
+      # TEMPORARY: the generated site as a downloadable artifact, to look at
+      # what a pull request would deploy. Serve the unzipped directory over
+      # HTTP, e.g. with `python3 -m http.server`.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: site
+
       - uses: actions/upload-pages-artifact@v4
+        if: github.event_name == 'push'
         with:
           path: site
+
+  deploy:
+    if: github.event_name == 'push'
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
