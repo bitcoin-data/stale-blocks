@@ -14,10 +14,11 @@
 #
 # fork-observer only marks blocks that a node reports as a chain tip. No node
 # reports the stale blocks, so a made-up node is added to the response with
-# every stale branch's tip. The frontend then draws them with a tip status:
-# valid-headers where the dataset holds the full block, and headers-only where
-# it holds only the header. That's what Bitcoin Core calls blocks it has,
-# respectively hasn't, downloaded but never validated.
+# every stale branch's tip. The frontend then draws them with a tip status.
+# Instead of the statuses of Bitcoin Core's getchaintips, which fork-observer
+# uses, these are the dataset's own: full-block where the dataset holds the
+# full block and header-only where it holds only the header. Neither says
+# anything about validity. ci/fork-observer/tree.html supplies their colours.
 
 import csv
 import io
@@ -93,7 +94,7 @@ def stale_tips(header_infos):
         has_block = (BLOCKS_DIR / f"{r['height']}-{r['hash']}.bin").exists()
         tips.append({
             "hash": r["hash"],
-            "status": "valid-headers" if has_block else "headers-only",
+            "status": "full-block" if has_block else "header-only",
             "height": in_tree[r["hash"]],
         })
     return tips

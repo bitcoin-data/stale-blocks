@@ -10,6 +10,12 @@
   data.json. The script below is the little that fork-observer's main.js does
   on top of that on a live instance and that a snapshot needs: define the
   globals blocktree.js reads, load the data, draw once.
+
+  Tip statuses: fork-observer names them after Bitcoin Core's getchaintips.
+  ci/fork-observer-site.py marks the stale blocks with two statuses of its
+  own, "full-block" and "header-only", so this page has to supply their
+  colours (see the style below). The main chain tip keeps fork-observer's
+  "active".
 -->
 <html class="dark">
 
@@ -19,27 +25,39 @@
   <link href="static/css/bootstrap.min.css" rel="stylesheet">
   <link href="static/css/style.css" rel="stylesheet">
   <style>
-    body { margin: 0; }
+    html, body { margin: 0; background: var(--body-bg); }
+    .tree-page { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--body-bg); }
+    .viz-wrap { flex: 1 1 auto; min-height: 0; }
     .viz { height: 100%; }
     .tree-controls { position: absolute; top: 8px; left: 8px; z-index: 2; }
-    .tree-legend { position: absolute; bottom: 8px; left: 8px; z-index: 2; }
+    .tree-legend { flex: 0 0 auto; padding: 6px 8px; }
     .viz-recenter { z-index: 2; }
+
+    /* colours for this page's own tip statuses, the same classes style.css
+       defines for fork-observer's */
+    :root, :root.dark { --tip-status-color-full-block: #FF69B4; --tip-status-color-header-only: #FF8800; }
+    .tip-status-color-fill-full-block { fill: var(--tip-status-color-full-block); color: var(--tip-status-color-full-block); }
+    .tip-status-color-fill-header-only { fill: var(--tip-status-color-header-only); color: var(--tip-status-color-header-only); }
+    .tip-status-color-background-full-block { background-color: var(--tip-status-color-full-block); }
+    .tip-status-color-background-header-only { background-color: var(--tip-status-color-header-only); }
   </style>
 </head>
 
 <body>
-  <div class="viz-wrap" style="position: absolute; inset: 0;">
-    <div class="tree-controls">
-      <select name="orientation" id="orientation" class="form-select form-select-sm" title="orientation"></select>
+  <div class="tree-page">
+    <div class="viz-wrap">
+      <div class="tree-controls">
+        <select name="orientation" id="orientation" class="form-select form-select-sm" title="orientation"></select>
+      </div>
+      <svg class="viz" id="drawing-area"></svg>
+      <button type="button" class="viz-recenter" id="recenter" title="Recenter on the chain tip" onclick="recenter()">re-center</button>
+      <!-- Kept for blocktree.js, which hides it since there is no countdown. -->
+      <div id="countdown-display" class="countdown-display" style="display: none"></div>
     </div>
-    <svg class="viz" id="drawing-area"></svg>
-    <button type="button" class="viz-recenter" id="recenter" title="Recenter on the chain tip" onclick="recenter()">re-center</button>
-    <!-- Kept for blocktree.js, which hides it since there is no countdown. -->
-    <div id="countdown-display" class="countdown-display" style="display: none"></div>
     <small class="tree-legend">
-      <span class="legend-item tip-status-color-background-active">active</span><span class="px-1">main chain tip when the page was generated</span>
-      <span class="legend-item tip-status-color-background-valid-headers">valid-headers</span><span class="px-1">stale block, full block in the dataset</span>
-      <span class="legend-item tip-status-color-background-headers-only">headers-only</span><span class="px-1">stale block, only the header in the dataset</span>
+      <span class="legend-item tip-status-color-background-active">active</span><span class="px-1">main chain tip when this page was generated</span>
+      <span class="legend-item tip-status-color-background-full-block">full-block</span><span class="px-1">stale block, full block in the dataset</span>
+      <span class="legend-item tip-status-color-background-header-only">header-only</span><span class="px-1">stale block, only the header in the dataset</span>
     </small>
   </div>
   <div id="toast" class="toast-msg"></div>
@@ -71,6 +89,20 @@
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") closeAllDescriptions()
     })
+
+    // blocktree.js labels each tip "<n>x <status>": how many of the instance's
+    // nodes report that status for it. Every tip here has exactly one source,
+    // so the count says nothing. Function declarations in a classic script are
+    // reassignable globals, and blocktree.js's own redraws call draw() through
+    // the global, so the labels are rewritten after every draw. The boxes are
+    // sized to the text, hence the re-measure.
+    const draw_blocktree = draw
+    draw = function (opts) {
+      const result = draw_blocktree(opts)
+      g.selectAll(".tip-info-row text").text(d => d.status)
+      recalc_tip_boxes()
+      return result
+    }
 
     fetch("data.json")
       .then(response => response.json())

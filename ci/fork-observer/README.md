@@ -38,9 +38,17 @@ globals `blocktree.js` reads, load the data, draw once. Everything a live
 instance has beyond the tree, like the node table, live updates or the mining
 jobs feed, is left out.
 
+The stale blocks are marked with two tip statuses of the dataset's own,
+`full-block` and `header-only`, instead of the getchaintips statuses
+fork-observer uses. `tree.html` supplies their colours, and it rewrites the
+tip labels after every draw to drop the "1x " count fork-observer puts in
+front of the status, which is meaningless with a single source. The "active"
+tip is the main chain tip when the page was generated.
+
 If a fork-observer change makes `blocktree.js` expect something new from
-`main.js`, `tree.html` has to provide it too. The browser console shows the
-resulting error.
+`main.js`, or renames what `tree.html` hooks into (`draw`, `recalc_tip_boxes`,
+the `.tip-info-row` labels), `tree.html` has to follow. The browser console
+shows the resulting error.
 
 ## Running it locally
 
