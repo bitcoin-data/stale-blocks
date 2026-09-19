@@ -47,7 +47,7 @@ jobs:
       - name: Stop fork-observer
         if: always()
         run: |
-          cat fork-observer.log
+          cat fork-observer.log || true
           pkill fork-observer || true
 
       # TEMPORARY: the generated site as a downloadable artifact, to look at

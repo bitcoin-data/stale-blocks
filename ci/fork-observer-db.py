@@ -174,6 +174,7 @@ def stale_headers(known):
 
 
 def write_db(path, headers):
+    path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
         path.unlink()
     db = sqlite3.connect(path)
