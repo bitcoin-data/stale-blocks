@@ -39,7 +39,9 @@ TREE_HTML_PATH = REPO_ROOT / "ci" / "fork-observer" / "tree.html"
 OUT_DIR = REPO_ROOT / "site" / "tree"
 
 FORK_OBSERVER_REPO = "0xB10C/fork-observer"
-FORK_OBSERVER_BRANCH = "main"
+# TEMPORARY: the branch with the blocktree.js performance work, to test it
+# against the whole dataset. Back to "main" once it is merged.
+FORK_OBSERVER_BRANCH = "blocktree-performance"
 USER_AGENT = "stale-blocks-ci (https://github.com/bitcoin-data/stale-blocks)"
 
 FORK_OBSERVER_URL = os.environ.get("FORK_OBSERVER_URL", "http://127.0.0.1:2323")
