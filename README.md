@@ -14,8 +14,11 @@ so passing them does not establish full consensus validity.
 
 The dashboard at
 [bitcoin-data.github.io/stale-blocks](https://bitcoin-data.github.io/stale-blocks/)
-shows the current contents of the dataset: the stale-block rate over time and
-every stale block with its decoded header.
+shows the current contents of the dataset: the stale-block rate over time, a
+header tree of every stale block with a known header next to the main chain
+(drawn with [fork-observer](https://github.com/0xB10C/fork-observer), see
+[`ci/fork-observer`](./ci/fork-observer)), and every stale block with its
+decoded header.
 
 The data itself lives in two places:
 
