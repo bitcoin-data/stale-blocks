@@ -1,1 +1,4 @@
 site/
+/fork-observer-db/
+/fork-observer
+__pycache__/
