@@ -1,0 +1,37 @@
+# fork-observer configuration for rendering the stale-block header tree in CI.
+# See ci/fork-observer/README.md for how it's used.
+#
+# Paths are relative to the repository root, where the deploy workflow runs
+# fork-observer. The database is built by ci/fork-observer-db.py. The www
+# directory is only served by fork-observer itself and never fetched here:
+# ci/fork-observer-site.py deploys the frontend from fork-observer's main branch.
+database_path = "fork-observer-db/fork-observer.sqlite"
+www_path = "fork-observer/www"
+
+query_interval = 15
+address = "127.0.0.1:2323"
+footer_html = ""
+
+[[networks]]
+id = 1
+name = "Mainnet"
+description = "Every stale block in the stale-blocks dataset with a known header, next to the main chain. Blocks between two stale blocks are hidden."
+min_fork_height = 0
+# Every height with a stale block is 'interesting' and kept in the response.
+# The dataset has a few thousand of those, so this has to be well above that.
+max_interesting_heights = 10000
+
+    # Pool identification fetches full blocks to read their coinbase. block-dn
+    # can't serve stale blocks, so it'd only produce errors.
+    [networks.pool_identification]
+    enable = false
+
+    # The block-dn node only provides the active chain tip. The headers are
+    # already in the database, so this fetches at most the few blocks found
+    # since the database was built.
+    [[networks.nodes]]
+    id = 0
+    name = "block-dn.org"
+    description = "The active chain tip as seen by the public block-dn instance the main chain headers were fetched from."
+    rpc_host = "https://block-dn.org"
+    implementation = "block-dn"
